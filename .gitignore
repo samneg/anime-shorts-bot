@@ -1,0 +1,6 @@
+temp_workspace/
+output_shorts/
+clips/
+__pycache__/
+*.pyc
+temp_*
