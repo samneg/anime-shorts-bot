@@ -1,10 +1,11 @@
 """
-Anime YouTube Shorts Telegram Bot Agent
-Runs 24/7 in the Cloud - 100% Free - Zero PC Required
+Anime YouTube Shorts Telegram Bot Agent (AI Powered by Google Gemini)
+Runs 24/7 in the Cloud on Render - 100% Free
 """
 
 import os
 import sys
+import json
 import shutil
 import asyncio
 import telebot
@@ -17,39 +18,81 @@ from anime_agent import (
     ensure_dirs
 )
 
-# 1. Bot Token Configuration
+# 1. Credentials Configuration
 DEFAULT_TOKEN = "9090036197:AAGaLKi9cSggbOkhopPBveFm7n7H0eiCAH0"
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", DEFAULT_TOKEN).strip()
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
 
 if not BOT_TOKEN or ":" not in BOT_TOKEN:
     print("="*60)
-    print(" [!] Please set your TELEGRAM_BOT_TOKEN to start the bot!")
-    print("     1. Open Telegram on your phone and search for @BotFather")
-    print("     2. Send /newbot, name it, and copy the HTTP API Token")
-    print("     3. In terminal run: ")
-    print("        $env:TELEGRAM_BOT_TOKEN=\"your_token_here\"")
-    print("        python telegram_bot.py")
+    print(" [!] Please set your TELEGRAM_BOT_TOKEN!")
     print("="*60)
     sys.exit(1)
 
 bot = telebot.TeleBot(BOT_TOKEN)
 ensure_dirs()
 
-# User preferences in memory (default to internet archive)
+# User preferences in memory
 user_sources = {}
+
+
+def generate_script_with_gemini(user_prompt: str) -> tuple[str, str]:
+    """
+    Uses Google Gemini (gemini-3.8-flash) to write a viral Shorts script
+    and extract the best anime clip search keywords.
+    """
+    if not GEMINI_API_KEY:
+        return user_prompt, "anime"
+        
+    try:
+        from google import genai
+        from google.genai import types
+        
+        client = genai.Client(api_key=GEMINI_API_KEY)
+        prompt = (
+            f"You are a viral YouTube Shorts writer and anime expert.\n"
+            f"The user wants an anime Short based on this topic: \"{user_prompt}\"\n\n"
+            f"Return a raw JSON object with:\n"
+            f"1. \"script\": A high-retention narration script for a 20-30 second vertical YouTube Short (35-50 words maximum). "
+            f"Start with an immediate curiosity hook in the first sentence. Energetic, punchy, easy to understand.\n"
+            f"2. \"search_query\": The best 1-3 search keywords for finding public anime video footage (e.g. \"Dragon Ball Goku\", \"Naruto\", \"Bleach\").\n\n"
+            f"Respond ONLY with raw JSON:\n"
+            f"{{\"script\": \"...\", \"search_query\": \"...\"}}"
+        )
+        
+        response = client.models.generate_content(
+            model="gemini-3.8-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json"
+            )
+        )
+        data = json.loads(response.text)
+        script = data.get("script", user_prompt)
+        query = data.get("search_query", "anime")
+        print(f"[Gemini] Generated script: {script}")
+        print(f"[Gemini] Extracted query: {query}")
+        return script, query
+    except Exception as e:
+        print(f"[Gemini] Error: {e}. Using raw text.")
+        return user_prompt, "anime"
 
 
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
+    ai_status = "🟢 *Gemini AI Active*" if GEMINI_API_KEY else "⚪ *Gemini AI Not Configured* (Direct script mode)"
     welcome_text = (
-        "🎬 *Anime YouTube Shorts Creator Bot*\n\n"
-        "Send me any script or anime fact, and I will automatically generate "
-        "a ready-to-upload *9:16 vertical YouTube Short* with voiceover and animated subtitles!\n\n"
-        "*Quick Commands:*\n"
-        "• `/source archive` - Use vintage & classic anime from Internet Archive\n"
-        "• `/source sakuga` - Use high-action animation cuts from Sakugabooru\n\n"
-        "*Try sending this now:*\n"
-        "_Did you know why Gojo Satoru covers his eyes? The Six Eyes give him atomic-level cursed energy vision, so his brain overheats if he leaves them open!_"
+        f"🎬 *AI-Powered Anime YouTube Shorts Creator*\n"
+        f"{ai_status}\n\n"
+        "Just send me any topic or anime idea, and Gemini will automatically write a viral script, "
+        "fetch anime footage, add voiceover, burn subtitles, and generate a *9:16 vertical Short*!\n\n"
+        "*Try sending any topic:*\n"
+        "• `Why Sukuna respects Yuji`\n"
+        "• `Top 3 darkest anime backstories`\n"
+        "• `Goku vs Saitama who actually wins?`\n\n"
+        "*Settings:*\n"
+        "• `/source archive` - Use Internet Archive\n"
+        "• `/source sakuga` - Use Sakugabooru action cuts"
     )
     bot.reply_to(message, welcome_text, parse_mode="Markdown")
 
@@ -66,48 +109,51 @@ def set_source(message):
 
 
 @bot.message_handler(func=lambda msg: True)
-def handle_script(message):
-    script_text = message.text.strip()
-    
-    if len(script_text) < 10:
-        bot.reply_to(message, "⚠️ Script is too short! Please provide at least 15-20 words for a proper Short.")
-        return
-
+def handle_prompt(message):
+    user_prompt = message.text.strip()
     chat_id = message.chat.id
     source = user_sources.get(chat_id, "archive")
     
-    # Send live status message
-    status = bot.reply_to(message, "⏳ *[1/4]* Generating neural voiceover & synced subtitles...", parse_mode="Markdown")
-    
+    # 0. Live status
+    status = bot.reply_to(message, "🧠 *[1/5]* Gemini AI is drafting your viral Shorts script...", parse_mode="Markdown")
     user_temp_dir = f"temp_{chat_id}"
     os.makedirs(user_temp_dir, exist_ok=True)
     
     try:
-        # 1. Voice & Subtitles
+        # Step 1: Gemini AI Script & Search Query
+        script_text, search_query = generate_script_with_gemini(user_prompt)
+        
+        # Step 2: Voiceover & Subtitles
+        bot.edit_message_text(
+            f"🎙️ *[2/5]* Generating voiceover & synced subtitles...\n_\"{script_text[:80]}...\"_",
+            chat_id=chat_id,
+            message_id=status.message_id,
+            parse_mode="Markdown"
+        )
         audio_path, srt_path = asyncio.run(generate_speech_and_subs(script_text))
         
-        # 2. Source Anime Clips
+        # Step 3: Sourcing Anime Clips
         bot.edit_message_text(
-            f"🔍 *[2/4]* Sourcing anime cuts from *{source}*...",
+            f"🔍 *[3/5]* Sourcing clips for *'{search_query}'* from *{source}*...",
             chat_id=chat_id,
             message_id=status.message_id,
             parse_mode="Markdown"
         )
         
         if source == "sakuga":
-            urls = fetch_sakugabooru_clips("fighting", count=4)
+            urls = fetch_sakugabooru_clips(search_query, count=4)
         else:
-            urls = fetch_internet_archive_clips("anime", count=4)
+            urls = fetch_internet_archive_clips(search_query, count=4)
             
         if not urls:
-            bot.edit_message_text("❌ Could not retrieve anime clips from public archive. Please try again in a moment.", chat_id=chat_id, message_id=status.message_id)
+            bot.edit_message_text("❌ Could not retrieve clips from archive. Please try another topic.", chat_id=chat_id, message_id=status.message_id)
             return
             
         clips = download_or_slice_clips(urls, target_duration_per_clip=3.0, target_count=4)
         
-        # 3. Render 9:16 Video
+        # Step 4: Video Composition (1080x1920)
         bot.edit_message_text(
-            "🎬 *[3/4]* Composing 1080x1920 layout & burning in subtitles...",
+            "🎬 *[4/5]* Composing 9:16 vertical layout & burning in subtitles...",
             chat_id=chat_id,
             message_id=status.message_id,
             parse_mode="Markdown"
@@ -116,43 +162,32 @@ def handle_script(message):
         out_filename = f"short_{chat_id}_{message.message_id}.mp4"
         final_video = render_youtube_short(clips, audio_path, srt_path, output_filename=out_filename)
         
-        # 4. Upload to Telegram
-        bot.edit_message_text("🚀 *[4/4]* Uploading finished Short to Telegram...", chat_id=chat_id, message_id=status.message_id, parse_mode="Markdown")
+        # Step 5: Send Video to User
+        bot.edit_message_text("🚀 *[5/5]* Uploading video to Telegram...", chat_id=chat_id, message_id=status.message_id, parse_mode="Markdown")
         
         with open(final_video, "rb") as video:
             caption = (
-                "🍿 *Your Anime Short is Ready!*\n\n"
-                "• *Format:* 1080x1920 (9:16 Vertical)\n"
-                "• *Subtitles:* Synced & Burned-in\n"
-                "• Ready for YouTube Shorts, TikTok, and Reels."
+                f"🍿 *AI-Generated Anime Short*\n\n"
+                f"📝 *Script:*\n\"{script_text}\"\n\n"
+                f"• *Resolution:* 1080x1920 (9:16 Vertical)\n"
+                f"• *Ready for:* YouTube Shorts, TikTok, Reels"
             )
             bot.send_video(chat_id, video, caption=caption, parse_mode="Markdown", supports_streaming=True)
             
-        # Clean up status message
         bot.delete_message(chat_id, status.message_id)
 
     except Exception as e:
         print(f"Error handling message: {e}")
-        bot.edit_message_text(f"❌ Error generating video: `{str(e)}`", chat_id=chat_id, message_id=status.message_id, parse_mode="Markdown")
+        bot.edit_message_text(f"❌ Error: `{str(e)}`", chat_id=chat_id, message_id=status.message_id, parse_mode="Markdown")
         
     finally:
-        # Cleanup temporary files
         if os.path.exists(user_temp_dir):
             shutil.rmtree(user_temp_dir, ignore_errors=True)
 
 
 if __name__ == "__main__":
-    if not BOT_TOKEN or BOT_TOKEN == "DUMMY_TOKEN":
-        print("="*60)
-        print(" [!] Please set your TELEGRAM_BOT_TOKEN first!")
-        print("     1. Open Telegram and search for @BotFather")
-        print("     2. Send /newbot and copy the HTTP API Token")
-        print("     3. Run: $env:TELEGRAM_BOT_TOKEN=\"your_token\"; python telegram_bot.py")
-        print("="*60)
-        sys.exit(1)
-        
     print("="*60)
-    print("🤖 Anime Shorts Telegram Bot is running!")
-    print("   Open Telegram on your phone and send a message to your bot.")
+    print("🤖 AI-Powered Anime Shorts Telegram Bot is running!")
+    print(f"   Gemini AI: {'Connected' if GEMINI_API_KEY else 'Off (Add GEMINI_API_KEY to activate)'}")
     print("="*60)
     bot.infinity_polling()
