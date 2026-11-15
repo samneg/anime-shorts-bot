@@ -1,0 +1,46 @@
+name: Generate Anime Shorts (Batch)
+
+on:
+  workflow_dispatch:
+    inputs:
+      telegram_chat_id:
+        description: 'Your Telegram Chat ID (Optional: sends videos to your Telegram)'
+        required: false
+        default: ''
+
+jobs:
+  render-shorts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install System FFmpeg & Fonts
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg fonts-liberation fonts-dejavu-core
+
+      - name: Install Python Dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run Batch Video Generator
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN || '9090036197:AAGaLKi9cSggbOkhopPBveFm7n7H0eiCAH0' }}
+          TELEGRAM_CHAT_ID: ${{ inputs.telegram_chat_id || secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          python batch_runner.py --file scripts.txt
+
+      - name: Upload Videos as Artifact (ZIP Download)
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: anime-shorts-50-pack
+          path: output_shorts/*.mp4
+          retention-days: 7
