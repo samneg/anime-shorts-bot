@@ -183,8 +183,10 @@ def process_single_video(chat_id: int, prompt: str, current_num: int, total_num:
         bot.send_message(chat_id, f"⚠️ *Skipped Video [{current_num}/{total_num}]* due to error: `{str(e)}`\nMoving to next in queue...", parse_mode="Markdown")
         
     finally:
+        import gc
         if os.path.exists(user_temp_dir):
             shutil.rmtree(user_temp_dir, ignore_errors=True)
+        gc.collect()
 
 
 def queue_worker():

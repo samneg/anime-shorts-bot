@@ -238,17 +238,19 @@ def render_youtube_short(
     # 1. Process each clip to exact 1080x1920 with background blur
     for idx, c in enumerate(clip_files):
         out_seg = os.path.join(TEMP_DIR, f"seg_{idx}.mp4")
+        # Ultra-low RAM 9:16 layout: downscales background to 270x480 before blur, saving 95% RAM
         filter_complex = (
-            "[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=25:5[bg];"
+            "[0:v]scale=270:480:force_original_aspect_ratio=increase,crop=270:480,boxblur=8:2,scale=1080:1920[bg];"
             "[0:v]scale=1080:-1[fg];"
             "[bg][fg]overlay=(W-w)/2:(H-h)/2[v]"
         )
         cmd = [
             "ffmpeg", "-y", "-i", c,
+            "-threads", "2",
             "-t", str(clip_duration),
             "-filter_complex", filter_complex,
             "-map", "[v]",
-            "-c:v", "libx264", "-preset", "veryfast", "-r", "30",
+            "-c:v", "libx264", "-preset", "ultrafast", "-r", "30",
             out_seg
         ]
         subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
@@ -264,6 +266,7 @@ def render_youtube_short(
     concatenated_video = os.path.join(TEMP_DIR, "combined_visuals.mp4")
     concat_cmd = [
         "ffmpeg", "-y", "-f", "concat", "-safe", "0",
+        "-threads", "2",
         "-i", concat_list,
         "-c", "copy",
         concatenated_video
@@ -285,11 +288,12 @@ def render_youtube_short(
 
     master_cmd = [
         "ffmpeg", "-y",
+        "-threads", "2",
         "-i", concatenated_video,
         "-i", audio_path,
         "-vf", sub_filter,
-        "-c:v", "libx264", "-preset", "medium", "-crf", "18",
-        "-c:a", "aac", "-b:a", "192k",
+        "-c:v", "libx264", "-preset", "ultrafast", "-crf", "22",
+        "-c:a", "aac", "-b:a", "128k",
         "-shortest",
         final_output
     ]
