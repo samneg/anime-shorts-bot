@@ -1,27 +1,24 @@
-# Deploying to Render.com (100% Free - $0/month)
+# Anime YouTube Shorts Generator & Batch Cloud Runner
 
-## Step 1: Push Workspace Files to Your GitHub Repository
-Push these 5 files to your new GitHub repository:
-* `Dockerfile`
-* `requirements.txt`
-* `app.py`
-* `telegram_bot.py`
-* `anime_agent.py`
+A 100% Free, Automated Anime Shorts Pipeline.
 
 ---
 
-## Step 2: Create Free Web Service on Render
-1. Go to [dashboard.render.com](https://dashboard.render.com/) and click **New +** → **Web Service**.
-2. Select **Build and deploy from a Git repository** → click **Next**.
-3. Select your GitHub repository that you just connected.
-4. Set the configuration:
-   * **Name:** `anime-shorts-bot`
-   * **Region:** Any (e.g. Frankfurt, Oregon, Singapore)
-   * **Runtime:** Select **Docker**
-   * **Instance Type:** Select **Free ($0/month)**
-5. Scroll down to **Environment Variables** → click **Add Environment Variable**:
-   * **Key:** `TELEGRAM_BOT_TOKEN`
-   * **Value:** `9090036197:AAGaLKi9cSggbOkhopPBveFm7n7H0eiCAH0`
-6. Click **Deploy Web Service**!
+## Method 1 (Recommended): GitHub Actions 7GB Cloud Runner (No Render, No PC)
 
-Render will build the Docker container with FFmpeg, start `app.py`, and your bot will be running 24/7 in the cloud with zero PC required!
+Run 50+ video batches directly on GitHub's free **7.0 GB RAM / 2 vCPU** cloud runners.
+
+### How to use from your phone:
+1. Open your repository: **[github.com/samneg/anime-shorts-bot](https://github.com/samneg/anime-shorts-bot)**
+2. Edit **`scripts.txt`** to paste your 50+ scripts (separated by `---` or numbered `1.`, `2.`, etc.).
+3. Go to the **Actions** tab → click **Generate Anime Shorts (Batch)**.
+4. Click **Run workflow**:
+   * *(Optional)* Enter your Telegram Chat ID if you want videos sent to your phone.
+   * Click the green **Run workflow** button!
+
+GitHub's cloud server will spin up, render all 50 videos with FFmpeg in minutes, send them to your Telegram, and provide a 1-click **ZIP download** of all videos!
+
+---
+
+## Method 2: Telegram Bot (`@my_anime_shorts_bot`)
+Send any single prompt or script directly to the bot on Telegram for on-the-go creation.
